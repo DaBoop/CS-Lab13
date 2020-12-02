@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Reflection;
-
+using System.Linq;
 namespace Lab13
 {
 
@@ -11,7 +11,8 @@ namespace Lab13
     {
         //List<string> list = new List<string>;
         private static string fileName = "OAAlogfie.txt";
-        static OAALog() => File.WriteAllText(fileName, "");
+        
+        //static OAALog() => File.WriteAllText(fileName, "");
         public static void Add(string message)
         {
             
@@ -148,6 +149,119 @@ namespace Lab13
                 return file.LastWriteTime.ToString("dd.MM.yyyy hh:mm");
             }
         }
+
+
+    }
+    public class OAADirInfo
+    {
+        DirectoryInfo dir;
+        public OAADirInfo(string dirName)
+        {
+            MethodBase currentMethod = MethodBase.GetCurrentMethod();
+            OAALog.Add(currentMethod.DeclaringType + " " + currentMethod.Name);
+            dir = new DirectoryInfo(dirName);
+        }
+
+        public string Name
+        {
+            get
+            {
+                MethodBase currentMethod = MethodBase.GetCurrentMethod();
+                OAALog.Add(currentMethod.DeclaringType + " " + currentMethod.Name);
+                return dir.Name;
+            }
+        }
+        public string CreationTime
+        {
+            get
+            {
+                MethodBase currentMethod = MethodBase.GetCurrentMethod();
+                OAALog.Add(currentMethod.DeclaringType + " " + currentMethod.Name);
+                return dir.CreationTime.ToString("dd.MM.yyyy hh:mm");
+            }
+        }
+        public int SubfolderCount
+        {
+            get
+            {
+                MethodBase currentMethod = MethodBase.GetCurrentMethod();
+                OAALog.Add(currentMethod.DeclaringType + " " + currentMethod.Name);
+            
+
+                return dir.GetDirectories().Count();
+            }
+        }
+
+        public string[] ParentFolders
+        {
+            get
+            {
+                MethodBase currentMethod = MethodBase.GetCurrentMethod();
+                OAALog.Add(currentMethod.DeclaringType + " " + currentMethod.Name);
+                var s = new List<string>();
+
+                DirectoryInfo curDir = dir;
+                while(curDir.Parent != null)
+                {
+                    curDir = curDir.Parent;
+                    s.Add(curDir.Name);
+                }
+                
+                return s.ToArray();
+            }
+
+        }
+    }
+    public class OAAFileManager
+    {
+        DriveInfo drive;
+        DirectoryInfo root;
+        public OAAFileManager(string driveName)
+        {
+            MethodBase currentMethod = MethodBase.GetCurrentMethod();
+            OAALog.Add(currentMethod.DeclaringType + " " + currentMethod.Name);
+            drive = new DriveInfo(driveName);
+            root = drive.RootDirectory;
+        }
+        public string Name
+        {
+            get
+            {
+                MethodBase currentMethod = MethodBase.GetCurrentMethod();
+                OAALog.Add(currentMethod.DeclaringType + " " + currentMethod.Name);
+                return drive.Name;
+            }
+        }
+        public string[] Elements
+        {
+            get
+            {
+                MethodBase currentMethod = MethodBase.GetCurrentMethod();
+                OAALog.Add(currentMethod.DeclaringType + " " + currentMethod.Name);
+
+                var elements = root.GetFiles().Select(x => "[file]" + x.Name).Concat(root.GetDirectories().Select(x => "[folder]" + x.Name)).ToArray(); ;
+                var subfolder = Directory.CreateDirectory(root.FullName + "OAAFiles");
+                using (var file = File.CreateText(subfolder.FullName + "\\OAAdirinfo.txt"))
+                {
+                    file.Write(string.Join("\n", elements));
+                }
+
+                var file2 = new FileInfo(subfolder.FullName + "\\OAAdirInfo.txt");
+
+                //string s = subfolder.FullName + "\\OAAdiskinfo.txt";
+                file2.CopyTo(subfolder.FullName + "\\OAAdiskinfo.txt",true);
+                file2.Delete();
+
+                Directory.CreateDirectory(root.FullName + "OAAInspect");
+
+              
+
+                return elements;
+            }
+        }
+        //public DirectoryInfo CreateSubfolder(string name) => root.CreateSubdirectory(name);
+    
+
 
     }
 }
