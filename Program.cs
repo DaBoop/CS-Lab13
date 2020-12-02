@@ -21,6 +21,14 @@ namespace Lab13
             var fileManager = new OAAFileManager("e");
             Console.WriteLine($"{fileManager.Name}\n\tElements:\n\t\t{string.Join("\n\t\t", fileManager.Elements)}");
 
+            DateTime time = new DateTime(2020,12,3,0,0,0);
+
+            Console.WriteLine("\n\t\t" + string.Join("\n\t\t", OAALog.FindByDay(time)));
+            Console.WriteLine("\n\t\t" + string.Join("\n\t\t", OAALog.Find("Disk")));
+
+            Console.WriteLine("Entry count in log file: " + OAALog.EntryCount);
+
+            OAALog.RemoveOld();
         }
     }
 }

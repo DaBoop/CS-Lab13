@@ -4,6 +4,8 @@ using System.IO;
 using System.Text;
 using System.Reflection;
 using System.Linq;
+using System.IO.Compression;
+
 namespace Lab13
 {
 
@@ -11,15 +13,116 @@ namespace Lab13
     {
         //List<string> list = new List<string>;
         private static string fileName = "OAAlogfie.txt";
-        
+
+        public static int EntryCount
+        {
+            get
+            {
+                int result;
+                using (var streamReader = new StreamReader(fileName))
+                {
+                    result = streamReader.ReadToEnd().Split('\n').Count();
+                }
+                return result;
+            }
+        }
+            
+            
         //static OAALog() => File.WriteAllText(fileName, "");
         public static void Add(string message)
+        {   
+            File.AppendAllText(fileName,System.DateTime.Now.ToString("dd.MM.yyyy HH:mm") + " " + message + "\n");
+        }
+
+        public static string[] FindByDay(DateTime time)
         {
-            
-            File.AppendAllText(fileName,System.DateTime.Now.ToString("dd.MM.yyyy hh:mm") + " " + message + "\n");
+            var result = new List<string>();
+            var entries = new List<string>();
+            string dateString;
+            DateTime lowerInterval = time.AddDays(-1);
+            using (var streamReader = new StreamReader(fileName))
+            {
+                entries = streamReader.ReadToEnd().Split('\n').ToList();
+                foreach (var entry in entries)
+                {
+                    if (entry.Length > 0)
+                    { 
+                        dateString = entry.Substring(0,16);
+                        DateTime entryDate = DateTime.Parse(dateString);
+                        
+                        //DEBUG PURPOSE ONLY
+                        //  int later = entryDate.CompareTo(lowerInterval);
+                        //  int earlier = entryDate.CompareTo(time);
+                        //=====
+
+                        if (entryDate.CompareTo(lowerInterval) >= 0 && entryDate.CompareTo(time) <= 0) 
+                            result.Add(entry);
+                    }
+                }
+            }
+
+            return result.ToArray();
+        }
+
+        public static string[] Find(DateTime lowerInterval, DateTime higherInterval)
+        {
+            var result = new List<string>();
+            var entries = new List<string>();
+            string dateString;
+            using (var streamReader = new StreamReader(fileName))
+            {
+                entries = streamReader.ReadToEnd().Split('\n').ToList();
+                foreach (var entry in entries)
+                {
+                    if (entry.Length > 0)
+                    {
+                        dateString = entry.Substring(0, 16);
+                        DateTime entryDate = DateTime.Parse(dateString);
+
+                        //DEBUG PURPOSE ONLY
+                        //  int later = entryDate.CompareTo(lowerInterval);
+                        //  int earlier = entryDate.CompareTo(time);
+                        //=====
+
+                        if (entryDate.CompareTo(lowerInterval) >= 0 && entryDate.CompareTo(higherInterval) <= 0)
+                            result.Add(entry);
+                    }
+                }
+            }
+
+            return result.ToArray();
+        }
+        public static string[] Find(string keyword)
+        {
+            var result = new List<string>();
+            var entries = new List<string>();
+            string dateString;
+            using (var streamReader = new StreamReader(fileName))
+            {
+                entries = streamReader.ReadToEnd().Split('\n').ToList();
+                foreach (var entry in entries)
+                {
+                    if (entry.Length > 0 && entry.Contains(keyword))
+                    {
+                            result.Add(entry);
+                    }
+                }
+            }
+
+            return result.ToArray();
+        }
+
+        public static void RemoveOld() // Deletes entries older than 1 hour
+        {
+            var currentTime = System.DateTime.Now;
+            var lowerInterval = currentTime.AddHours(-1);
+            var entryList = Find(lowerInterval, currentTime);
+            File.WriteAllText(fileName, "");
+            File.AppendAllLines(fileName, entryList);
         }
 
     }
+
 
     public class OAADiskInfo
     {
@@ -239,30 +342,62 @@ namespace Lab13
                 MethodBase currentMethod = MethodBase.GetCurrentMethod();
                 OAALog.Add(currentMethod.DeclaringType + " " + currentMethod.Name);
 
-                var elements = root.GetFiles().Select(x => "[file]" + x.Name).Concat(root.GetDirectories().Select(x => "[folder]" + x.Name)).ToArray(); ;
+                var elements = root.GetFiles().Select(x => "[file]" + x.Name).Concat(root.GetDirectories().Select(x => "[folder]" + x.Name)).ToArray();
                 var subfolder = Directory.CreateDirectory(root.FullName + "OAAFiles");
-                using (var file = File.CreateText(subfolder.FullName + "\\OAAdirinfo.txt"))
+                using (var file = File.CreateText(Path.Combine(subfolder.FullName, "\\OAAdirinfo.txt")))
                 {
                     file.Write(string.Join("\n", elements));
                 }
 
-                var file2 = new FileInfo(subfolder.FullName + "\\OAAdirInfo.txt");
+                var file2 = new FileInfo(Path.Combine(subfolder.FullName, "\\OAAdirInfo.txt"));
 
                 //string s = subfolder.FullName + "\\OAAdiskinfo.txt";
                 file2.CopyTo(subfolder.FullName + "\\OAAdiskinfo.txt",true);
                 file2.Delete();
 
-                Directory.CreateDirectory(root.FullName + "OAAInspect");
+                var subfolder2 = Directory.CreateDirectory(root.FullName + "OAAInspect");
 
-              
+                var files = subfolder.GetFiles("*.txt");
+                foreach (var file in files)
+                {
+                    file.CopyTo(Path.Combine(subfolder2.FullName, file.Name), true);
+                }
+
+                files = subfolder.GetFiles("*");
+                foreach (var file in files)
+                {
+                    file.CopyTo(Path.Combine(subfolder2.FullName, file.Name), true);
+                }
+
+                try
+                {
+                    Directory.GetFiles(Path.Combine(subfolder.FullName, subfolder2.Name)).ToList().ForEach(File.Delete);
+                    Directory.Delete(Path.Combine(subfolder.FullName, subfolder2.Name));
+
+                } catch(Exception){};
+                subfolder2.MoveTo(Path.Combine(subfolder.FullName, subfolder2.Name));
+
+                try
+                {
+                    File.Delete(Path.Combine(root.FullName, "archive.zip"));
+                }
+                catch (Exception) { };
+                ZipFile.CreateFromDirectory(subfolder2.FullName, Path.Combine(root.FullName, "archive.zip"));
+                
+                try
+                {
+                    Directory.GetFiles(Path.Combine(subfolder.FullName, "Extracted")).ToList().ForEach(File.Delete);
+                    File.Delete(Path.Combine(subfolder.FullName, "Extracted"));
+                }
+                catch (Exception) { };
+                ZipFile.ExtractToDirectory(Path.Combine(root.FullName, "archive.zip"), Path.Combine(subfolder.FullName, "Extracted"));
+
+                       
+
 
                 return elements;
             }
         }
-        //public DirectoryInfo CreateSubfolder(string name) => root.CreateSubdirectory(name);
-    
-
-
     }
 }
 
